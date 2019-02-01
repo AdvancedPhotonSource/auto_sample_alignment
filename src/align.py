@@ -69,8 +69,8 @@ class Alignment:
 
             ysmooth =  -yy 
             xindices = np.linspace(0, len(ysmooth), len(ysmooth))
-            plt.scatter(xindices, ysmooth)
-            plt.show()
+            ax.scatter(xindices, ysmooth)
+            # plt.show()
             # ax.axis('off')
 
             canvas.draw() #draw the canvas, cache the renderer
