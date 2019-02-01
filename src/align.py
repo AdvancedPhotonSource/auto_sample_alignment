@@ -90,7 +90,7 @@ class Alignment:
             print (sum(d[:max_pt]), sum(d[max_pt:]))
 
             cv2.imshow("Window-1", the_plot)            
-            cv2.imshow("Window-2", window)
+            cv2.imshow("Window-2", clone)
             cv2.waitKey(0)
 
         # if self.parameters['debug']:
