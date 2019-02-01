@@ -1,5 +1,6 @@
+import numpy as np
 
- def smooth(x, window_len=11, window='hanning'):
+def smooth(x, window_len=11, window='hanning'):
     """smooth the data using a window with requested size.
     
     This method is based on the convolution of a scaled window with the signal.
@@ -45,9 +46,7 @@
     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
         raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-
     s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
-    #print(len(s))
     if window == 'flat': #moving average
         w=np.ones(window_len,'d')
     else:
@@ -56,3 +55,15 @@
     y=np.convolve(w/w.sum(),s,mode='valid')
     
     return y
+
+def create_debug_image(image_list):
+    w = sum([image.shape[1] for image in image_list])
+    h = max([image.shape[0] for image in image_list])
+
+    debug = np.zeros((h, w, 4))
+    w, h = 0, 0
+    for image in image_list:
+        debug[0:image.shape[0], w:w+image.shape[1], :image.shape[2]] = image
+        w += image.shape[1]
+
+    return debug

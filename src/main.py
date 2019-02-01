@@ -18,7 +18,7 @@ def driver(image_file, binary_threshold, canny_low, canny_high, transpose, debug
         'transpose': transpose,
         'debug': debug
     }
-    align.align(params)
+    align.compute_center(params)
 
 if __name__ == '__main__':
     driver()
