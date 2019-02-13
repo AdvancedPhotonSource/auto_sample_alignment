@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import time
+import operator
 from skimage.io import imread, imsave
 from skimage.transform import resize
 
@@ -49,16 +50,41 @@ class Alignment:
         edges = cv2.Canny(binary, canny1, canny2, apertureSize = 7)
         edges = np.transpose(edges)
 
-        winW, winH = 250, 250
+        winW, winH = 200, 200
         window = [winW, winH]
         step_size = 100
-        nonzero_threshold = 100
+        nonzero_threshold = 300
 
+        # patch = edges[750:900, 600:850]
+        # cv2.imshow("Window-1", patch)
+        # cv2.waitKey(0)
+
+        # y, x = np.nonzero(patch)    
+
+        # indices = np.argsort(x)
+
+        # ysmooth = smooth(-y[indices], 22)
+        # xindices = np.linspace(0, len(ysmooth), len(ysmooth))
+        # max_pt = np.argmax(ysmooth)
+        # data = ysmooth[max(0, max_pt-100):max_pt+100]
+        # d = np.sign(np.diff(data))
+        # print(np.sum(d[:max_pt]), np.sum(d[max_pt:]))
+
+        # plt.scatter(xindices, ysmooth)
+        # plt.show()
+
+        # y_df1 = np.insert(d, 0, 0)
+        # y_df2 = np.insert(np.diff(y_df1), 0, 0) 
+
+        # plt.scatter(np.linspace(0, len(y_df1), len(y_df2)), y_df2)
+
+        points = {}
+            
         for x,y,window in self.detection_windows(edges, window, step_size):
             if window.shape[0] != winH or window.shape[1] != winH:
                 continue
 
-            xx, yy = np.nonzero(window)
+            yy, xx = np.nonzero(window)
 
             if len(yy) < nonzero_threshold:
                 continue
@@ -67,31 +93,54 @@ class Alignment:
             canvas = FigureCanvas(fig)
             ax = fig.gca()
 
-            ysmooth =  -yy 
+            indx = np.argsort(xx)
+            ysmooth =  smooth(-yy[indx], 22)
             xindices = np.linspace(0, len(ysmooth), len(ysmooth))
-            ax.scatter(xindices, ysmooth)
-            # plt.show()
-            # ax.axis('off')
 
+            ax.scatter(xindices, ysmooth)
+            
             canvas.draw() #draw the canvas, cache the renderer
             s, (width, height) = canvas.print_to_buffer()
 
             the_plot = np.fromstring(s, dtype='uint8').reshape((height, width, 4))
-            # the_pot = np.resize(the_plot, (480, 640))
-
             clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
             cv2.rectangle(clone, (x, y), (x + winW, y + winH), (0, 255, 0), 2)
 
-            print(ysmooth)
             max_pt = np.argmax(ysmooth)
-            print ("Max pt ", max_pt)
             data = ysmooth[max(0, max_pt-30):max_pt+30]
             d = np.sign(np.diff(data))
-            print (sum(d[:max_pt]), sum(d[max_pt:]))
+            # print(d)
+            
+            # y_df1 = np.insert(np.diff(ysmooth), 0, 0)
+            y_df2 = np.insert(np.diff(d), 0, 0) 
 
-            cv2.imshow("Window-1", the_plot)            
-            cv2.imshow("Window-2", clone)
-            cv2.waitKey(0)
+
+            hitX = np.nonzero(y_df2)[0]
+            if hitX.shape[0] == 1 and y_df2[hitX] == -2:
+                # print (max_pt, hitX[0])
+
+                # print (f"X = {x}, Y = {y}")
+                new_y = np.argmax(-yy)
+                pt = (x+xx[new_y], y+yy[new_y])
+                # print (pt)
+                # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
+                if pt not in points:
+                    points[pt] = 1
+                else:
+                    points[pt] += 1
+
+                cv2.circle(clone,(x+xx[new_y],y+yy[new_y]), 5, (0,0,255), -1)
+                # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
+                # cv2.imshow("Window-1", the_plot)            
+                # cv2.imshow("Window-2", clone)
+                # cv2.waitKey(0)
+
+        pt = (max(points.items(), key=operator.itemgetter(1))[0])
+        clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
+        cv2.circle(clone,(pt[0], pt[1]), 5, (0,0,255), -1)
+        plt.imshow(clone)
+        plt.show()
+        
 
         # if self.parameters['debug']:
         #     imsave('original.png', self.image_)
