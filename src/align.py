@@ -10,6 +10,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from utils import smooth, create_debug_image
+from trackpy import bandpass
 
 class Alignment:
     def __init__(self, image):
@@ -25,7 +26,7 @@ class Alignment:
         self.parameters = {
             'binary_threshold': 0.25,
             'canny_thresh1': 0.5,
-            'canny_thresh2': 1.0,
+            'canny_thresh2': 0.8,
             'transpose': False,
             'debug': True
         }
@@ -42,18 +43,20 @@ class Alignment:
         canny1 = self.parameters['canny_thresh1']
         canny2 = self.parameters['canny_thresh2']
 
-
         binary = np.zeros_like(self.image_)
-        binary[self.image_ > binary_threshold] = 1      
+        binary[self.image_ > binary_threshold] = 255      
         binary = np.uint8(binary)
 
-        edges = cv2.Canny(binary, canny1, canny2, apertureSize = 7)
-        edges = np.transpose(edges)
+        edges = cv2.Canny(binary, canny1, canny2, apertureSize = 3)
 
         winW, winH = 200, 200
         window = [winW, winH]
-        step_size = 100
+        step_size = 50
         nonzero_threshold = 300
+
+        cv2.imshow("Window-1", edges)            
+        cv2.waitKey(0)
+        return
 
         # patch = edges[750:900, 600:850]
         # cv2.imshow("Window-1", patch)
@@ -79,7 +82,6 @@ class Alignment:
         # plt.scatter(np.linspace(0, len(y_df1), len(y_df2)), y_df2)
 
         points = {}
-            
         for x,y,window in self.detection_windows(edges, window, step_size):
             if window.shape[0] != winH or window.shape[1] != winH:
                 continue
@@ -94,29 +96,40 @@ class Alignment:
             ax = fig.gca()
 
             indx = np.argsort(xx)
-            ysmooth =  smooth(-yy[indx], 22)
+            ysmooth =  smooth(-yy[indx], 12)
             xindices = np.linspace(0, len(ysmooth), len(ysmooth))
 
             ax.scatter(xindices, ysmooth)
             
-            canvas.draw() #draw the canvas, cache the renderer
+            canvas.draw()
             s, (width, height) = canvas.print_to_buffer()
 
             the_plot = np.fromstring(s, dtype='uint8').reshape((height, width, 4))
+
             clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
             cv2.rectangle(clone, (x, y), (x + winW, y + winH), (0, 255, 0), 2)
 
             max_pt = np.argmax(ysmooth)
-            data = ysmooth[max(0, max_pt-30):max_pt+30]
+            # data = ysmooth[max(0, max_pt-30):max_pt+30]
+            data = ysmooth
             d = np.sign(np.diff(data))
-            # print(d)
-            
-            # y_df1 = np.insert(np.diff(ysmooth), 0, 0)
+            y_df1 = np.insert(np.diff(ysmooth), 0, 0)
             y_df2 = np.insert(np.diff(d), 0, 0) 
 
+            print("******")
+            print("Points in Y ", len(ysmooth))
+            # print("Diff Data ", d)
+            print("Max point ", max_pt)
+            left_half = sum(ysmooth[:max_pt])
+            right_half = sum(ysmooth[max_pt:])
+            print ("Weight distribution", left_half, right_half, abs(left_half) - abs(right_half))
+            print("******")
+
+            if len(ysmooth) > 500:
+                continue
 
             hitX = np.nonzero(y_df2)[0]
-            if hitX.shape[0] == 1 and y_df2[hitX] == -2:
+            if True: #hitX.shape[0] == 1 and y_df2[hitX] == -2:
                 # print (max_pt, hitX[0])
 
                 # print (f"X = {x}, Y = {y}")
@@ -130,13 +143,13 @@ class Alignment:
                     points[pt] += 1
 
                 cv2.circle(clone,(x+xx[new_y],y+yy[new_y]), 5, (0,0,255), -1)
-                # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
-                # cv2.imshow("Window-1", the_plot)            
-                # cv2.imshow("Window-2", clone)
-                # cv2.waitKey(0)
+                cv2.imshow("Window-1", the_plot)            
+                cv2.imshow("Window-2", clone)
+                cv2.waitKey(0)
 
         pt = (max(points.items(), key=operator.itemgetter(1))[0])
         clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
+        print (pt[0], pt[1])
         cv2.circle(clone,(pt[0], pt[1]), 5, (0,0,255), -1)
         plt.imshow(clone)
         plt.show()
