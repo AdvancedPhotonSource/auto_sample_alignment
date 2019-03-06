@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import time
+import math
 import operator
 from skimage.io import imread, imsave
 from skimage.transform import resize
@@ -54,10 +55,6 @@ class Alignment:
         step_size = 50
         nonzero_threshold = 300
 
-        cv2.imshow("Window-1", edges)            
-        cv2.waitKey(0)
-        return
-
         # patch = edges[750:900, 600:850]
         # cv2.imshow("Window-1", patch)
         # cv2.waitKey(0)
@@ -82,6 +79,8 @@ class Alignment:
         # plt.scatter(np.linspace(0, len(y_df1), len(y_df2)), y_df2)
 
         points = {}
+        min_diff = float('Inf')
+        ans_X, ans_Y = 0, 0
         for x,y,window in self.detection_windows(edges, window, step_size):
             if window.shape[0] != winH or window.shape[1] != winH:
                 continue
@@ -116,41 +115,46 @@ class Alignment:
             y_df1 = np.insert(np.diff(ysmooth), 0, 0)
             y_df2 = np.insert(np.diff(d), 0, 0) 
 
-            print("******")
-            print("Points in Y ", len(ysmooth))
-            # print("Diff Data ", d)
-            print("Max point ", max_pt)
-            left_half = sum(ysmooth[:max_pt])
-            right_half = sum(ysmooth[max_pt:])
-            print ("Weight distribution", left_half, right_half, abs(left_half) - abs(right_half))
-            print("******")
-
             if len(ysmooth) > 500:
                 continue
 
-            hitX = np.nonzero(y_df2)[0]
-            if True: #hitX.shape[0] == 1 and y_df2[hitX] == -2:
-                # print (max_pt, hitX[0])
+            print("******")
+            print("Points in Y ", len(ysmooth))
+            print("Max point ", max_pt)
+            left_half = sum(y_df1[:max_pt])
+            right_half = sum(y_df1[max_pt:])
+            diff = abs(abs(left_half) - abs(right_half))
+            print ("Weight distribution", left_half, right_half, diff)
+            print("******")
 
-                # print (f"X = {x}, Y = {y}")
+            if diff < min_diff:
+                min_diff = diff
                 new_y = np.argmax(-yy)
-                pt = (x+xx[new_y], y+yy[new_y])
-                # print (pt)
-                # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
-                if pt not in points:
-                    points[pt] = 1
-                else:
-                    points[pt] += 1
+                ans_X, ans_Y = x + xx[new_y], y + yy[new_y]
 
-                cv2.circle(clone,(x+xx[new_y],y+yy[new_y]), 5, (0,0,255), -1)
-                cv2.imshow("Window-1", the_plot)            
-                cv2.imshow("Window-2", clone)
-                cv2.waitKey(0)
+            # hitX = np.nonzero(y_df2)[0]
+            # if True: #hitX.shape[0] == 1 and y_df2[hitX] == -2:
+            #     # print (max_pt, hitX[0])
 
-        pt = (max(points.items(), key=operator.itemgetter(1))[0])
+            #     # print (f"X = {x}, Y = {y}")
+            #     new_y = np.argmax(-yy)
+            #     pt = (x+xx[new_y], y+yy[new_y])
+            #     # print (pt)
+            #     # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
+            #     if pt not in points:
+            #         points[pt] = 1
+            #     else:
+            #         points[pt] += 1
+
+            #     cv2.circle(clone,(x+xx[new_y],y+yy[new_y]), 5, (0,0,255), -1)
+            #     cv2.imshow("Window-1", the_plot)            
+            #     cv2.imshow("Window-2", clone)
+            #     cv2.waitKey(0)
+
+        # pt = (max(points.items(), key=operator.itemgetter(1))[0])
         clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
-        print (pt[0], pt[1])
-        cv2.circle(clone,(pt[0], pt[1]), 5, (0,0,255), -1)
+        cv2.circle(clone,(ans_X, ans_Y), 5, (0,0,255), -1)
+        plt.figure(figsize=(20, 20))
         plt.imshow(clone)
         plt.show()
         
