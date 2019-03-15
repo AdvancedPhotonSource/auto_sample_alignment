@@ -23,13 +23,15 @@ class Alignment:
             self.image_ = imread(image)
 
         self.image_ = (self.image_ - np.min(self.image_) ) / np.max(self.image_)
+        self.original = np.copy(self.image_)
 
         self.parameters = {
             'binary_threshold': 0.25,
             'canny_thresh1': 0.5,
             'canny_thresh2': 0.8,
             'transpose': False,
-            'debug': True
+            'debug': False,
+            'quiet': False,
         }
 
     def compute_center(self, params):
@@ -54,29 +56,6 @@ class Alignment:
         window = [winW, winH]
         step_size = 50
         nonzero_threshold = 300
-
-        # patch = edges[750:900, 600:850]
-        # cv2.imshow("Window-1", patch)
-        # cv2.waitKey(0)
-
-        # y, x = np.nonzero(patch)    
-
-        # indices = np.argsort(x)
-
-        # ysmooth = smooth(-y[indices], 22)
-        # xindices = np.linspace(0, len(ysmooth), len(ysmooth))
-        # max_pt = np.argmax(ysmooth)
-        # data = ysmooth[max(0, max_pt-100):max_pt+100]
-        # d = np.sign(np.diff(data))
-        # print(np.sum(d[:max_pt]), np.sum(d[max_pt:]))
-
-        # plt.scatter(xindices, ysmooth)
-        # plt.show()
-
-        # y_df1 = np.insert(d, 0, 0)
-        # y_df2 = np.insert(np.diff(y_df1), 0, 0) 
-
-        # plt.scatter(np.linspace(0, len(y_df1), len(y_df2)), y_df2)
 
         points = {}
         min_diff = float('Inf')
@@ -109,7 +88,6 @@ class Alignment:
             cv2.rectangle(clone, (x, y), (x + winW, y + winH), (0, 255, 0), 2)
 
             max_pt = np.argmax(ysmooth)
-            # data = ysmooth[max(0, max_pt-30):max_pt+30]
             data = ysmooth
             d = np.sign(np.diff(data))
             y_df1 = np.insert(np.diff(ysmooth), 0, 0)
@@ -118,51 +96,46 @@ class Alignment:
             if len(ysmooth) > 500:
                 continue
 
-            print("******")
-            print("Points in Y ", len(ysmooth))
-            print("Max point ", max_pt)
+            if self.parameters['debug']:
+                print("******")
+                print("Points in Y ", len(ysmooth))
+                print("Max point ", max_pt)
+            
             left_half = sum(y_df1[:max_pt])
             right_half = sum(y_df1[max_pt:])
             diff = abs(abs(left_half) - abs(right_half))
-            print ("Weight distribution", left_half, right_half, diff)
-            print("******")
+            
+            if self.parameters['debug']:
+                print ("Weight distribution", left_half, right_half, diff)
+                print("******")
 
             if diff < min_diff:
                 min_diff = diff
                 new_y = np.argmax(-yy)
                 ans_X, ans_Y = x + xx[new_y], y + yy[new_y]
 
-            # hitX = np.nonzero(y_df2)[0]
-            # if True: #hitX.shape[0] == 1 and y_df2[hitX] == -2:
-            #     # print (max_pt, hitX[0])
+            if self.parameters['debug']:
+                cv2.circle(clone, (ans_X, ans_Y), 5, (0,0,255), -1)
+                ratio = clone.shape[1] / clone.shape[0]
+                h = 600
+                clone = resize(clone, (h, h*ratio))
+                cv2.imshow("Window-1", the_plot)            
+                cv2.imshow("Window-2", resize(clone, (800, 600)))
+                cv2.waitKey(0)
 
-            #     # print (f"X = {x}, Y = {y}")
-            #     new_y = np.argmax(-yy)
-            #     pt = (x+xx[new_y], y+yy[new_y])
-            #     # print (pt)
-            #     # print (sum(d[:hitX[0]]), sum(d[hitX[0]:]))
-            #     if pt not in points:
-            #         points[pt] = 1
-            #     else:
-            #         points[pt] += 1
+        clone = np.dstack((self.original.copy(), self.original.copy(), self.original.copy()))
+        if self.parameters['transpose']:
+            ans_X, ans_Y = ans_Y, ans_X
 
-            #     cv2.circle(clone,(x+xx[new_y],y+yy[new_y]), 5, (0,0,255), -1)
-            #     cv2.imshow("Window-1", the_plot)            
-            #     cv2.imshow("Window-2", clone)
-            #     cv2.waitKey(0)
+        print(f"[Computed] X =  {ans_X}, Y = {ans_Y}")
 
-        # pt = (max(points.items(), key=operator.itemgetter(1))[0])
-        clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
-        cv2.circle(clone,(ans_X, ans_Y), 5, (0,0,255), -1)
-        plt.figure(figsize=(20, 20))
-        plt.imshow(clone)
-        plt.show()
+        if not self.parameters['quite']:
+            cv2.circle(clone,(ans_X, ans_Y), 5, (0,0,255), -1)
+            plt.figure(figsize=(20, 20))
+            plt.imshow(clone)
+            plt.show()
         
 
-        # if self.parameters['debug']:
-        #     imsave('original.png', self.image_)
-        #     imsave('binary_threshold.png', binary * 255)
-        #     imsave('edges.png', np.uint8(edges))
 
     def detection_windows(self, image, window_size, step_size=30):
         h, w = image.shape
