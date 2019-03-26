@@ -29,6 +29,7 @@ class Alignment:
             'binary_threshold': 0.25,
             'canny_thresh1': 0.5,
             'canny_thresh2': 0.8,
+            'gap': 100,
             'transpose': False,
             'debug': False,
             'quiet': False,
@@ -123,19 +124,24 @@ class Alignment:
                 cv2.imshow("Window-2", resize(clone, (800, 600)))
                 cv2.waitKey(0)
 
+        pt1 = (ans_X-300) + np.nonzero(binary[ans_Y+self.parameters['gap'], ans_X-300:ans_X])[0][-1]
+        pt2 = ans_X + np.nonzero(binary[ans_Y+self.parameters['gap'], ans_X:ans_X+300])[0][0]
+        midpoint = int(pt1 + (pt2-pt1)/2.0)
+        ans_X = midpoint
+
         clone = np.dstack((self.original.copy(), self.original.copy(), self.original.copy()))
+
         if self.parameters['transpose']:
             ans_X, ans_Y = ans_Y, ans_X
 
-        print(f"[Computed] X =  {ans_X}, Y = {ans_Y}")
-
         if not self.parameters['quite']:
             cv2.circle(clone,(ans_X, ans_Y), 5, (0,0,255), -1)
+
             plt.figure(figsize=(20, 20))
             plt.imshow(clone)
             plt.show()
         
-
+        print (f"image={self.image} ; X={ans_X} ; Y={ans_Y}")
 
     def detection_windows(self, image, window_size, step_size=30):
         h, w = image.shape
