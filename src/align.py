@@ -1,17 +1,10 @@
+import os, sys
+
 import numpy as np
-import cv2
-import time
-import math
-import operator
-from skimage.io import imread, imsave
-from skimage.transform import resize
 
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
+from skimage.io import imread
 
-from utils import smooth, create_debug_image
-from trackpy import bandpass
+from algorithm import Algorithm
 
 class Alignment:
     def __init__(self, image):
@@ -20,6 +13,10 @@ class Alignment:
         if type(image).__module__ == np.__name__:
             self.image_ = np.copy(image)
         else:
+            if not os.path.isfile(image):
+                sys.stderr.write("Image file does not exists or we do not have permission to read it\n")
+                sys.exit(1);
+
             self.image_ = imread(image)
 
         self.image_ = (self.image_ - np.min(self.image_) ) / np.max(self.image_)
@@ -27,133 +24,31 @@ class Alignment:
 
         self.parameters = {
             'binary_threshold': 0.25,
-            'canny_thresh1': 0.5,
-            'canny_thresh2': 0.8,
+            'canny_thresh_low': 0.5,
+            'canny_thresh_high': 0.8,
             'gap': 100,
             'transpose': False,
             'debug': False,
             'quiet': False,
+            'mode' : 'pin'
         }
 
-    def compute_center(self, params):
+    def compute_center(self, algorithm, params):
+        """
+        """
         for k,v in params.items():
             self.parameters[k] = v
-
-        if self.parameters['transpose']:
-            self.image_ = np.transpose(self.image_)
-
-        binary_threshold = self.parameters['binary_threshold']
-
-        canny1 = self.parameters['canny_thresh1']
-        canny2 = self.parameters['canny_thresh2']
-
-        binary = np.zeros_like(self.image_)
-        binary[self.image_ > binary_threshold] = 255      
-        binary = np.uint8(binary)
-
-        edges = cv2.Canny(binary, canny1, canny2, apertureSize = 3)
-
-        winW, winH = 200, 200
-        window = [winW, winH]
-        step_size = 50
-        nonzero_threshold = 300
-
-        points = {}
-        min_diff = float('Inf')
-        ans_X, ans_Y = 0, 0
-        for x,y,window in self.detection_windows(edges, window, step_size):
-            if window.shape[0] != winH or window.shape[1] != winH:
-                continue
-
-            yy, xx = np.nonzero(window)
-
-            if len(yy) < nonzero_threshold:
-                continue
-
-            fig = Figure()
-            canvas = FigureCanvas(fig)
-            ax = fig.gca()
-
-            indx = np.argsort(xx)
-            ysmooth =  smooth(-yy[indx], 12)
-            xindices = np.linspace(0, len(ysmooth), len(ysmooth))
-
-            ax.scatter(xindices, ysmooth)
-            
-            canvas.draw()
-            s, (width, height) = canvas.print_to_buffer()
-
-            the_plot = np.fromstring(s, dtype='uint8').reshape((height, width, 4))
-
-            clone = np.dstack((edges.copy(), edges.copy(), edges.copy()))
-            cv2.rectangle(clone, (x, y), (x + winW, y + winH), (0, 255, 0), 2)
-
-            max_pt = np.argmax(ysmooth)
-            data = ysmooth
-            d = np.sign(np.diff(data))
-            y_df1 = np.insert(np.diff(ysmooth), 0, 0)
-            y_df2 = np.insert(np.diff(d), 0, 0) 
-
-            if len(ysmooth) > 500:
-                continue
-
-            if self.parameters['debug']:
-                print("******")
-                print("Points in Y ", len(ysmooth))
-                print("Max point ", max_pt)
-            
-            left_half = sum(y_df1[:max_pt])
-            right_half = sum(y_df1[max_pt:])
-            diff = abs(abs(left_half) - abs(right_half))
-            
-            if self.parameters['debug']:
-                print ("Weight distribution", left_half, right_half, diff)
-                print("******")
-
-            if diff < min_diff:
-                min_diff = diff
-                new_y = np.argmax(-yy)
-                ans_X, ans_Y = x + xx[new_y], y + yy[new_y]
-
-            if self.parameters['debug']:
-                cv2.circle(clone, (ans_X, ans_Y), 5, (0,0,255), -1)
-                ratio = clone.shape[1] / clone.shape[0]
-                h = 600
-                clone = resize(clone, (h, h*ratio))
-                cv2.imshow("Window-1", the_plot)            
-                cv2.imshow("Window-2", resize(clone, (800, 600)))
-                cv2.waitKey(0)
-
-        pt1 = (ans_X-300) + np.nonzero(binary[ans_Y+self.parameters['gap'], ans_X-300:ans_X])[0][-1]
-        pt2 = ans_X + np.nonzero(binary[ans_Y+self.parameters['gap'], ans_X:ans_X+300])[0][0]
-        midpoint = int(pt1 + (pt2-pt1)/2.0)
-        ans_X = midpoint
-
-        clone = np.dstack((self.original.copy(), self.original.copy(), self.original.copy()))
-
-        if self.parameters['transpose']:
-            ans_X, ans_Y = ans_Y, ans_X
-
-        if not self.parameters['quite']:
-            cv2.circle(clone,(ans_X, ans_Y), 5, (0,0,255), -1)
-
-            plt.figure(figsize=(20, 20))
-            plt.imshow(clone)
-            plt.show()
         
-        print (f"image={self.image} ; X={ans_X} ; Y={ans_Y}")
+        print (self.parameters);
 
-    def detection_windows(self, image, window_size, step_size=30):
-        h, w = image.shape
-
-        for y in range(0, h, step_size):
-            for x in range(0, w, step_size):
-                yield(x, y, image[y:y+window_size[1], x:x+window_size[0]])
-
-
-
-
-
+        if algorithm == 'pin':
+            return Algorithm.compute_center_pin(self.image_, self.parameters);
+        elif algorithm == 'slit':
+            return Algorithm.compute_center_slit(self.image_, self.parameters);
+        else:
+            sys.stderr.write("Invalid algorithm " + algorithm)
+            sys.exit(1);
+            
 
 
    
