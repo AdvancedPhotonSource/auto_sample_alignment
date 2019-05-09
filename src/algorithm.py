@@ -156,7 +156,7 @@ class Algorithm:
 
         if not params['quiet']:
             clone = np.dstack((original.copy(), original.copy(), original.copy()))
-            for pt in box[:1]:
+            for pt in box:
                 cv2.circle(clone, (pt[0], pt[1]), 5, (0,0,255), -1)
 
             plt.figure(figsize=(20, 20))
