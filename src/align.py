@@ -39,12 +39,13 @@ class Alignment:
         for k,v in params.items():
             self.parameters[k] = v
         
-        print (self.parameters);
-
         if algorithm == 'pin':
             return Algorithm.compute_center_pin(self.image_, self.parameters);
         elif algorithm == 'slit':
             return Algorithm.compute_center_slit(self.image_, self.parameters);
+        elif algorithm == 'show':
+            cv2.imshow("Window-1", self.original)            
+            cv2.waitKey(0)
         else:
             sys.stderr.write("Invalid algorithm " + algorithm)
             sys.exit(1);

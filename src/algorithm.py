@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from utils import smooth, create_debug_image
+from utils import smooth, create_debug_image, order_points
 from trackpy import bandpass
 
 class Algorithm:
@@ -136,14 +136,34 @@ class Algorithm:
         binary[image_ > binary_threshold] = 255      
         binary = np.uint8(binary)
 
-        edges = cv2.Canny(binary, cannyl, cannyh, apertureSize = 3)
+        if params['debug']:
+            cv2.imshow("Window-1", binary)            
+            cv2.waitKey(0)
 
-        cv2.imshow('canny', edges)
-        cv2.waitKey(0)
+        im2, contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        X, Y = np.nonzero(edges)
+        try:
+            cnt = [ cnt.shape[0] for cnt in contours]
+            cnt = contours[np.argmax(cnt)]
+            rect = cv2.minAreaRect(cnt)
+            box = cv2.boxPoints(rect)
+            box = np.array(box, dtype='int')
+            box = order_points(box)
+        except Exception as e:
+            if params['debug']:
+                print(e)
+            return (-1, -1)
 
-        return -1, -1
+        if not params['quiet']:
+            clone = np.dstack((original.copy(), original.copy(), original.copy()))
+            for pt in box[:1]:
+                cv2.circle(clone, (pt[0], pt[1]), 5, (0,0,255), -1)
+
+            plt.figure(figsize=(20, 20))
+            plt.imshow(clone)
+            plt.show()
+    
+        return ','.join([f"({b[0]}, {b[1]})" for b in box])
 
     @staticmethod
     def detection_windows(image, window_size, step_size=30):
