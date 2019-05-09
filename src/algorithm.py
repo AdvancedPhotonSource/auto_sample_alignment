@@ -142,7 +142,6 @@ class Algorithm:
         cv2.waitKey(0)
 
         X, Y = np.nonzero(edges)
-        
 
         return -1, -1
 
