@@ -20,14 +20,21 @@ class Algorithm:
         if params['transpose']:
             image_ = np.transpose(image_)
         
+        image_ = (image_ - np.min(image_)) / np.max(image_)
+        
         binary_threshold = params['binary_threshold']
+        hist, bins = np.histogram(image_.ravel(), 65536, [0.0, 1.0])
+        a = np.argmax(hist)
+        binary = np.zeros_like(image_)
+        binary[np.logical_and(image_ > bins[a]-0.20, image_ < bins[a]+0.20)] = 255
+        binary = np.uint8(binary)
 
         cannyl = params['canny_thresh_low']
         cannyh = params['canny_thresh_high']
 
-        binary = np.zeros_like(image_)
-        binary[image_ > binary_threshold] = 255      
-        binary = np.uint8(binary)
+        # binary = np.zeros_like(image_)
+        # binary[image_ > binary_threshold] = 255      
+        # binary = np.uint8(binary)
 
         edges = cv2.Canny(binary, cannyl, cannyh, apertureSize = 3)
 
