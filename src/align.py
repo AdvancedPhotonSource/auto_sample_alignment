@@ -15,7 +15,7 @@ class Alignment:
         else:
             if not os.path.isfile(image):
                 sys.stderr.write("Image file does not exists or we do not have permission to read it\n")
-                sys.exit(1);
+                sys.exit(1)
 
             self.image_ = imread(image)
 
