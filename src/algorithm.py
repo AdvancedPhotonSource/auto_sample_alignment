@@ -23,10 +23,12 @@ class Algorithm:
         image_ = (image_ - np.min(image_)) / np.max(image_)
         
         binary_threshold = params['binary_threshold']
-        hist, bins = np.histogram(image_.ravel(), 65536, [0.0, 1.0])
+        hist, bins = np.histogram(image_.ravel(), 1000, [0.0, 1.0])
         a = np.argmax(hist)
         binary = np.zeros_like(image_)
-        binary[np.logical_and(image_ > bins[a]-0.20, image_ < bins[a]+0.20)] = 255
+        print (bins[a])
+        binary[image_ < bins[a]] = 255
+        # binary[np.logical_and(image_ > bins[a]-0.20, image_ < bins[a]+0.20)] = 255
         binary = np.uint8(binary)
 
         cannyl = params['canny_thresh_low']

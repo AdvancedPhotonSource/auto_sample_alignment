@@ -10,6 +10,7 @@ from align import Alignment
 @click.option('-ch', '--canny_high', default=0.8)
 @click.option('-wh', '--window_height', default=200)
 @click.option('-ww', '--window_width', default=200)
+@click.option('--tracking/--no-tracking', default=False)
 @click.option('-g', '--gap', default=100)
 @click.option('--transpose/--no-transpose', default=False)
 @click.option('--debug/--no-debug', default=False)
@@ -22,6 +23,7 @@ def driver(image_file,
           canny_high, 
           window_height,
           window_width,
+          tracking,
           gap, 
           transpose, 
           debug, 
@@ -39,6 +41,8 @@ def driver(image_file,
         'quiet': quiet
     }
     
+    if tracking:
+        
     print(align.compute_center(algorithm, params));
 
 if __name__ == '__main__':
