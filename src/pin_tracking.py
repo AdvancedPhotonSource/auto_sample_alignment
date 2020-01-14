@@ -25,7 +25,7 @@ from mpl_toolkits.mplot3d import axes3d
 from align import Alignment
 
 
-def tracking(params, algorithm='pin', repeat=3):
+def tracking(params, algorithm='pin', repeat=1):
     
     #### ENABLE TAB COMPLETION
     readline.parse_and_bind('tab: complete')
@@ -50,8 +50,6 @@ def tracking(params, algorithm='pin', repeat=3):
     #################################################
 
     pname='/home/beams/S1IDUSER/mnt/s1c/mli_nov19/tomo';
-
-    
 
     for i in range(repeat):
         #################################################
@@ -87,13 +85,12 @@ def tracking(params, algorithm='pin', repeat=3):
         fname=PyEpics.caget('1idPG1:TIFF1:FileName_RBV', 'str') + "_%06d"%(PyEpics.caget('1idPG1:TIFF1:FileNumber_RBV')-1) + '.tif'
         pfname=os.path.join(pname, fname)
 
-    
         align180 = Alignment(pfname)
         x180, y180 = align180.compute_center(algorithm, params)
         if (x180 == -1) or (y180 == -1):
             print("Alignment failed at 180 degrees")
             break
-            
+
         print(f"pin x,y position when omega is 180 : (X = {x180}, y = {180})")
     
         ### COMPUTE MOTIONS TO MAKE

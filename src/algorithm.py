@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+from skimage.filters import threshold_otsu
+
 from utils import smooth, create_debug_image, order_points
 from trackpy import bandpass
 
@@ -23,20 +25,31 @@ class Algorithm:
         image_ = (image_ - np.min(image_)) / np.max(image_)
         
         binary_threshold = params['binary_threshold']
-        hist, bins = np.histogram(image_.ravel(), 1000, [0.0, 1.0])
+
+        # IQR for outlier removal. 
+        hist, bins = np.histogram(image_.ravel(), 10000, [0.0, 1.0])
+        q1 = np.percentile(bins, 25)
+        q3 = np.percentile(bins, 75) 
+
+        iqr = q3 - q1
+        image__ = np.copy(image_)
+
+        image__[image__ > (1.5*iqr) + q3] = 0
+        image__[image__ < (1.5*iqr) - q3] = 0
+
         a = np.argmax(hist)
-        binary = np.zeros_like(image_)
-        print (bins[a])
-        binary[image_ < bins[a]] = 255
+        binary = np.zeros_like(image__)
+        thresh = threshold_otsu(image)
+        binary = image__ <= thresh
         # binary[np.logical_and(image_ > bins[a]-0.20, image_ < bins[a]+0.20)] = 255
-        binary = np.uint8(binary)
+        # binary = np.uint8(binary)
 
         cannyl = params['canny_thresh_low']
         cannyh = params['canny_thresh_high']
 
         # binary = np.zeros_like(image_)
         # binary[image_ > binary_threshold] = 255      
-        # binary = np.uint8(binary)
+        binary = np.uint8(binary)
 
         edges = cv2.Canny(binary, cannyl, cannyh, apertureSize = 3)
 

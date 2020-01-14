@@ -1,6 +1,7 @@
 import click
 
 from align import Alignment
+from pin_tracking import tracking
 
 @click.command()
 @click.option('-i', '--image_file', required=True)
@@ -12,6 +13,7 @@ from align import Alignment
 @click.option('-ww', '--window_width', default=200)
 @click.option('--tracking/--no-tracking', default=False)
 @click.option('-g', '--gap', default=100)
+@click.option('-r', '--repeat', default=1)
 @click.option('--transpose/--no-transpose', default=False)
 @click.option('--debug/--no-debug', default=False)
 @click.option('--quiet/--no-quiet', default=True)
@@ -25,6 +27,7 @@ def driver(image_file,
           window_width,
           tracking,
           gap, 
+          repeat,
           transpose, 
           debug, 
           quiet):
@@ -42,8 +45,9 @@ def driver(image_file,
     }
     
     if tracking:
-        
-    print(align.compute_center(algorithm, params));
+        tracking(params, algorithm, repeat)
+    else:
+        print(align.compute_center(algorithm, params));
 
 if __name__ == '__main__':
     driver()
