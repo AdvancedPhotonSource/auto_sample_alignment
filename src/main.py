@@ -46,7 +46,7 @@ def driver(image_file,
     
     if tracking:
         tracking(params, algorithm, repeat)
-    else:
+    elif algorithm:
         print(align.compute_center(algorithm, params));
 
 if __name__ == '__main__':
